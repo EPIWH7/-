@@ -7,6 +7,7 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap">
     <style>
         * {
@@ -69,6 +70,51 @@
             opacity: 0.95;
             font-weight: 400;
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+                /* Контейнер для кнопок экспорта */
+        .export-controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+            animation: fadeIn 0.8s ease-out 0.1s both;
+            flex-wrap: wrap;
+        }
+
+        .export-btn {
+            padding: 15px 30px;
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .export-btn:hover {
+            background: rgba(255, 255, 255, 0.35);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .export-btn.print {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .export-btn.excel {
+            background: linear-gradient(135deg, #21d190 0%, #1a9c6b 100%);
+        }
+
+        .export-btn.all-excel {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
         }
 
         .search-container {
@@ -337,6 +383,85 @@
                 opacity: 1;
             }
         }
+        
+                /* Стили для печати */
+        @media print {
+            body {
+                background: white !important;
+                color: black !important;
+                padding: 0;
+            }
+            
+            body::before {
+                display: none;
+            }
+            
+            .export-controls,
+            .search-container,
+            .stats-bar {
+                display: none !important;
+            }
+            
+            .app-header {
+                color: black !important;
+                margin-bottom: 20px;
+            }
+            
+            .app-header h1 {
+                background: none !important;
+                -webkit-text-fill-color: black !important;
+                color: black !important;
+                text-shadow: none !important;
+            }
+            
+            .branch-header {
+                background: #f5f5f5 !important;
+                color: black !important;
+                border: 1px solid #ddd !important;
+            }
+            
+            .table-container {
+                background: white !important;
+                border: 1px solid #ddd !important;
+                box-shadow: none !important;
+            }
+            
+            table {
+                color: black !important;
+            }
+            
+            th, td {
+                color: black !important;
+                border-color: #ddd !important;
+            }
+            
+            th {
+                background: #f5f5f5 !important;
+            }
+            
+            tbody tr:hover {
+                background: #f9f9f9 !important;
+                transform: none !important;
+            }
+            
+            .room-cell,
+            .name-cell,
+            .phone-cell {
+                color: black !important;
+            }
+            
+            .position-cell {
+                color: #333 !important;
+            }
+            
+            #root {
+                max-width: none;
+            }
+            
+            .branch-section {
+                page-break-inside: avoid;
+            }
+        }
 
         @media (max-width: 768px) {
             .app-header h1 {
@@ -362,6 +487,15 @@
         }
 
         @media (max-width: 600px) {
+            .export-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            .export-btn {
+                width: 100%;
+                max-width: 300px;
+                justify-content: center;
+            }
             .position-cell {
                 display: none;
             }
@@ -911,6 +1045,63 @@
                 ]
             }
         ];
+        
+                // Функция для экспорта в Excel
+        function exportToExcel(data, filename = 'Телефонный_справочник_ДКЦ1') {
+            try {
+                const workbook = XLSX.utils.book_new();
+                
+                data.forEach(branch => {
+                    const excelData = [
+                        ['Филиал', branch.title],
+                        ['', ''],
+                        ['Кабинет', 'ФИО', 'Должность', 'Телефон']
+                    ];
+                    
+                    branch.contacts.forEach(contact => {
+                        excelData.push([
+                            contact.room || '',
+                            contact.name,
+                            contact.position,
+                            contact.phone || ''
+                        ]);
+                    });
+                    
+                    const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+                    
+                    const colWidths = [
+                        { wch: 15 },
+                        { wch: 30 },
+                        { wch: 40 },
+                        { wch: 15 }
+                    ];
+                    worksheet['!cols'] = colWidths;
+                    
+                    XLSX.utils.book_append_sheet(workbook, worksheet, branch.title.substring(0, 31));
+                });
+                
+                XLSX.writeFile(workbook, `${filename}_${new Date().toISOString().split('T')[0]}.xlsx`);
+                return true;
+            } catch (error) {
+                console.error('Ошибка при экспорте в Excel:', error);
+                alert('Произошла ошибка при экспорте в Excel');
+                return false;
+            }
+        }
+
+        // Функция для экспорта отфильтрованных данных
+        function exportFilteredToExcel(filteredData) {
+            if (!filteredData || filteredData.length === 0) {
+                alert('Нет данных для экспорта');
+                return false;
+            }
+            return exportToExcel(filteredData, 'Телефонный_справочник_ДКЦ1_фильтр');
+        }
+
+        // Функция для экспорта всех данных
+        function exportAllToExcel(branchesData) {
+            return exportToExcel(branchesData, 'Телефонный_справочник_ДКЦ1_все_филиалы');
+        }
     </script>
 
     <script type="text/babel">
@@ -1001,6 +1192,21 @@
                     <div className="app-header">
                         <h1>📞 Телефонный справочник</h1>
                         <p>ГБУЗ "ДКЦ №1 ДЗМ" — Все филиалы</p>
+                    </div>
+                    
+                                        <div className="export-controls">
+                        <button className="export-btn print" onClick={() => window.print()}>
+                            <span>🖨️</span>
+                            <span>Распечатать</span>
+                        </button>
+                        <button className="export-btn excel" onClick={() => exportFilteredToExcel(filteredData)}>
+                            <span>📥</span>
+                            <span>Экспорт (поиск)</span>
+                        </button>
+                        <button className="export-btn all-excel" onClick={() => exportAllToExcel(branchesData)}>
+                            <span>📊</span>
+                            <span>Экспорт (все данные)</span>
+                        </button>
                     </div>
 
                     <div className="search-container">
