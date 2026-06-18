@@ -1106,11 +1106,13 @@ function exportToExcel(data, filename) {
 
     xml += '</Workbook>';
 
-    const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
+    const blob = new Blob([xml], { type: 'application/octet-stream' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = filename + '_' + new Date().toISOString().split('T')[0] + '.xls';
+    a.target = '_blank';
+    a.rel = 'noopener';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
