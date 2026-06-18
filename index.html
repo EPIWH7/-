@@ -292,13 +292,8 @@
         .export-btn.all-excel {
             background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
         }
-        .export-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none !important;
-        }
+
     </style>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.20.1/dist/xlsx.full.min.js"></script>
 </head>
 <body>
     <div id="root">
@@ -1012,12 +1007,14 @@ document.querySelectorAll('.branch-header').forEach(header => {
     });
 });
 
-// ===================== ЭКСПОРТ =====================
-const hasXLSX = typeof XLSX !== 'undefined';
-
-if (!hasXLSX) {
-    document.getElementById('btnExportFiltered').disabled = true;
-    document.getElementById('btnExportAll').disabled = true;
+// ===================== ЭКСПОРТ В EXCEL (XML 2003) =====================
+// Генерирует родной Excel-формат без внешних библиотек
+function escapeXml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;')
+                      .replace(/</g, '&lt;')
+                      .replace(/>/g, '&gt;')
+                      .replace(/"/g, '&quot;');
 }
 
 function getVisibleData() {
@@ -1045,45 +1042,87 @@ function getVisibleData() {
 }
 
 function exportToExcel(data, filename) {
-    if (!hasXLSX) {
-        alert('Библиотека Excel недоступна. Попробуйте позже или используйте печать в PDF.');
-        return false;
-    }
-    try {
-        const wb = XLSX.utils.book_new();
-        data.forEach(branch => {
-            const rows = [
-                ['Филиал', branch.title],
-                ['', ''],
-                ['Кабинет', 'ФИО', 'Должность', 'Телефон']
-            ];
-            branch.contacts.forEach(c => {
-                rows.push([c.room || '', c.name || '', c.position || '', c.phone || '']);
-            });
-            const ws = XLSX.utils.aoa_to_sheet(rows);
-            ws['!cols'] = [{ wch: 15 }, { wch: 30 }, { wch: 40 }, { wch: 15 }];
-            XLSX.utils.book_append_sheet(wb, ws, branch.title.substring(0, 31));
-        });
-        XLSX.writeFile(wb, filename + '_' + new Date().toISOString().split('T')[0] + '.xlsx');
-        return true;
-    } catch (err) {
-        console.error(err);
-        alert('Ошибка при экспорте в Excel');
-        return false;
-    }
-}
-
-function exportFiltered() {
-    const data = getVisibleData();
     if (!data || data.length === 0) {
         alert('Нет данных для экспорта');
         return;
     }
+
+    let xml = '<?xml version="1.0" encoding="UTF-8"?>
+';
+    xml += '<?mso-application progid="Excel.Sheet"?>
+';
+    xml += '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" ';
+    xml += 'xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+';
+
+    data.forEach((branch, idx) => {
+        const sheetName = escapeXml(branch.title.substring(0, 31).replace(/[\/*?:\[\]]/g, '_'));
+        xml += '  <Worksheet ss:Name="' + sheetName + '">
+';
+        xml += '    <Table>
+';
+
+        // Заголовок филиала
+        xml += '      <Row><Cell ss:MergeAcross="3"><Data ss:Type="String">' + escapeXml(branch.title) + '</Data></Cell></Row>
+';
+        xml += '      <Row></Row>
+';
+
+        // Шапка таблицы
+        xml += '      <Row>
+';
+        xml += '        <Cell><Data ss:Type="String">Кабинет</Data></Cell>
+';
+        xml += '        <Cell><Data ss:Type="String">ФИО</Data></Cell>
+';
+        xml += '        <Cell><Data ss:Type="String">Должность</Data></Cell>
+';
+        xml += '        <Cell><Data ss:Type="String">Телефон</Data></Cell>
+';
+        xml += '      </Row>
+';
+
+        // Данные
+        branch.contacts.forEach(c => {
+            xml += '      <Row>
+';
+            xml += '        <Cell><Data ss:Type="String">' + escapeXml(c.room) + '</Data></Cell>
+';
+            xml += '        <Cell><Data ss:Type="String">' + escapeXml(c.name) + '</Data></Cell>
+';
+            xml += '        <Cell><Data ss:Type="String">' + escapeXml(c.position) + '</Data></Cell>
+';
+            xml += '        <Cell><Data ss:Type="String">' + escapeXml(c.phone) + '</Data></Cell>
+';
+            xml += '      </Row>
+';
+        });
+
+        xml += '    </Table>
+';
+        xml += '  </Worksheet>
+';
+    });
+
+    xml += '</Workbook>';
+
+    const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename + '_' + new Date().toISOString().split('T')[0] + '.xls';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function exportFiltered() {
+    const data = getVisibleData();
     exportToExcel(data, 'Телефонный_справочник_ДКЦ1_фильтр');
 }
 
 function exportAll() {
-    // Собираем все данные из DOM
     const sections = document.querySelectorAll('.branch-section');
     const data = [];
     sections.forEach(section => {
