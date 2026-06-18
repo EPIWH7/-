@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Телефонный справочник ДКЦ №1 (Все филиалы)</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        #root {
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .app-header {
+            text-align: center;
+            color: white;
+            margin-bottom: 50px;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        .app-header h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 15px;
+            text-shadow: 0 6px 30px rgba(0, 0, 0, 0.4);
+            letter-spacing: -2px;
+            background: linear-gradient(135deg, #fff 0%, #f0f0f0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .app-header p {
+            font-size: 1.3rem;
+            opacity: 0.95;
+            font-weight: 400;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+                /* Контейнер для кнопок экспорта */
+        .export-controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+            animation: fadeIn 0.8s ease-out 0.1s both;
+            flex-wrap: wrap;
+        }
+
+        .export-btn {
+            padding: 15px 30px;
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .export-btn:hover {
+            background: rgba(255, 255, 255, 0.35);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .export-btn.print {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .export-btn.excel {
+            background: linear-gradient(135deg, #21d190 0%, #1a9c6b 100%);
+        }
+
+        .export-btn.all-excel {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .search-container {
+            margin-bottom: 30px;
+            animation: fadeIn 0.8s ease-out 0.2s both;
+        }
+
+        .search-wrapper {
+            position: relative;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 24px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.5rem;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 22px 24px 22px 60px;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.98);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+            transition: all 0.3s ease;
+            font-weight: 400;
+        }
+
+        .search-box:focus {
+            outline: none;
+            transform: translateY(-3px);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.35);
+            background: #fff;
+        }
+
+        .search-box::placeholder {
+            color: #999;
+            font-weight: 400;
+        }
+
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+            animation: fadeIn 0.8s ease-out 0.3s both;
+        }
+
+        .stat-card {
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.18);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-card h3 {
+            font-size: 2.5rem;
+            margin-bottom: 8px;
+            font-weight: 800;
+        }
+
+        .stat-card p {
+            font-size: 1rem;
+            opacity: 0.9;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Branch/Accordion Styles */
+        .branch-section {
+            margin-bottom: 20px;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .branch-header {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(20px);
+            padding: 20px 30px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            font-size: 1.4rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .branch-header:hover {
+            background: rgba(255, 255, 255, 0.35);
+            transform: translateY(-2px);
+        }
+
+        .branch-header .icon {
+            transition: transform 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .branch-header.active {
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .branch-header.active .icon {
+            transform: rotate(180deg);
+        }
+
+        .table-container {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(30px);
+            border-bottom-left-radius: 25px;
+            border-bottom-right-radius: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-top: none; 
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        }
+        
+        .table-wrapper {
+            overflow-x: auto;
+            max-height: 70vh;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(20px);
+        }
+
+        th {
+            padding: 20px 24px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        tbody tr {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        tbody tr:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: scale(1.005);
+        }
+
+        tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        td {
+            padding: 18px 24px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 400;
+        }
+
+        .room-cell {
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 1.05rem;
+            min-width: 100px;
+        }
+
+        .name-cell {
+            font-weight: 600;
+            color: white;
+        }
+
+        .position-cell {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .phone-cell {
+            font-weight: 700;
+            color: white;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1rem;
+            white-space: pre-line; /* For multi-line phones */
+        }
+
+        .no-results {
+            text-align: center;
+            color: white;
+            padding: 80px 20px;
+        }
+
+        .no-results-icon {
+            font-size: 5rem;
+            margin-bottom: 20px;
+            opacity: 0.6;
+        }
+
+        .no-results p {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+                /* Стили для печати */
+        @media print {
+            body {
+                background: white !important;
+                color: black !important;
+                padding: 0;
+            }
+            
+            body::before {
+                display: none;
+            }
+            
+            .export-controls,
+            .search-container,
+            .stats-bar {
+                display: none !important;
+            }
+            
+            .app-header {
+                color: black !important;
+                margin-bottom: 20px;
+            }
+            
+            .app-header h1 {
+                background: none !important;
+                -webkit-text-fill-color: black !important;
+                color: black !important;
+                text-shadow: none !important;
+            }
+            
+            .branch-header {
+                background: #f5f5f5 !important;
+                color: black !important;
+                border: 1px solid #ddd !important;
+            }
+            
+            .table-container {
+                background: white !important;
+                border: 1px solid #ddd !important;
+                box-shadow: none !important;
+            }
+            
+            table {
+                color: black !important;
+            }
+            
+            th, td {
+                color: black !important;
+                border-color: #ddd !important;
+            }
+            
+            th {
+                background: #f5f5f5 !important;
+            }
+            
+            tbody tr:hover {
+                background: #f9f9f9 !important;
+                transform: none !important;
+            }
+            
+            .room-cell,
+            .name-cell,
+            .phone-cell {
+                color: black !important;
+            }
+            
+            .position-cell {
+                color: #333 !important;
+            }
+            
+            #root {
+                max-width: none;
+            }
+            
+            .branch-section {
+                page-break-inside: avoid;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .app-header h1 {
+                font-size: 2.5rem;
+            }
+            .app-header p {
+                font-size: 1.1rem;
+            }
+            .stat-card h3 {
+                font-size: 2rem;
+            }
+            th, td {
+                padding: 12px 16px;
+                font-size: 0.9rem;
+            }
+            th {
+                font-size: 0.85rem;
+            }
+            .branch-header {
+                font-size: 1.2rem;
+                padding: 15px 20px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .export-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            .export-btn {
+                width: 100%;
+                max-width: 300px;
+                justify-content: center;
+            }
+            .position-cell {
+                display: none;
+            }
+            thead th:nth-child(3) {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script>
+        // Данные всех филиалов (обновленные с данными из Excel)
+        const branchesData = [
+            {
+                id: "gu_a",
+                title: "Головное здание (Корпус А, Миклухо-Маклая 29/2)",
+                contacts: [
+                    { "room": "Холл 1 этаж", "name": "", "position": "Стойка информации", "phone": "74371; 74370" },
+                    { "room": "Холл 1 этаж", "name": "", "position": "Пост охраны", "phone": "74447" },
+                    { "room": "103", "name": "ОРВИ", "position": "ОРВИ", "phone": "74367" },
+                    { "room": "104", "name": "Полякова Дарья Михайловна", "position": "Инфекционист", "phone": "74366" },
+                    { "room": "106", "name": "", "position": "ОРВИ", "phone": "74368" },
+                    { "room": "113", "name": "", "position": "Аптека", "phone": "74372" },
+                    { "room": "114", "name": "", "position": "Дежурный врач", "phone": "74374" },
+                    { "room": "115", "name": "", "position": "М/с дежурного врача", "phone": "74375" },
+                    { "room": "116", "name": "Мащенко Елена Сергеевна", "position": "", "phone": "74376" },
+                    { "room": "Холл 2 этаж", "name": "", "position": "Медицинский пост", "phone": "74378" },
+                    { "room": "201", "name": "Козырев Сергей Евгеньевич", "position": "ВОП", "phone": "74379" },
+                    { "room": "202", "name": "", "position": "Процедурный", "phone": "74380" },
+                    { "room": "203", "name": "Ланкин Антон Олегович", "position": "Терапевт", "phone": "74381" },
+                    { "room": "204", "name": "Тренин Виктор Анатольевич", "position": "ВОП", "phone": "74382" },
+                    { "room": "205", "name": "Икрамова Зульфия Бойпочоевна", "position": "Заведующий 1 терапией", "phone": "74383" },
+                    { "room": "206", "name": "Мержуева Хава Ахметовна", "position": "Врач - методист", "phone": "74384" },
+                    { "room": "207", "name": "", "position": "КДК", "phone": "74449" },
+                    { "room": "208", "name": "", "position": "Кабинет листков нетрудоспособности", "phone": "74395; 74434; 74386" },
+                    { "room": "209", "name": "Ратникова Нина Юрьевна", "position": "Старшая м/с", "phone": "74387" },
+                    { "room": "212", "name": "Бикбаева Линда Ириковна", "position": "Терапевт", "phone": "74388" },
+                    { "room": "213", "name": "", "position": "Прививочный", "phone": "74389" },
+                    { "room": "214", "name": "Ершов Алексей Иванович", "position": "ВОП", "phone": "74390" },
+                    { "room": "216", "name": "Заречнева Наталья Михайловна", "position": "ВОП", "phone": "74391" },
+                    { "room": "217", "name": "Кулабухов Евгений Евгеньевич", "position": "ВОП", "phone": "74392" },
+                    { "room": "218", "name": "Акинина Ирина Николаевна", "position": "ВОП (хроники)", "phone": "74396" },
+                    { "room": "219", "name": "Темнова Елена Алексеевна", "position": "ВОП (хроники)", "phone": "74434" },
+                    { "room": "220", "name": "Серобян Александра Грачьяевна", "position": "Терапевт", "phone": "74397" },
+                    { "room": "221", "name": "Прошкина Елизавета Викторовна", "position": "ВОП", "phone": "74398" },
+                    { "room": "223", "name": "Захарова Светлана Васильевна", "position": "ВОП", "phone": "74400" },
+                    { "room": "224", "name": "Ковылина Наталья Валентиновна", "position": "Терапевт", "phone": "74401" },
+                    { "room": "225", "name": "Костюхина Юлия Юрьевна", "position": "Терапевт", "phone": "74402" },
+                    { "room": "Холл 3 этаж", "name": "", "position": "Медицинский пост", "phone": "74403" },
+                    { "room": "304", "name": "Тарканова Дисана Юрьевна", "position": "Методист", "phone": "74404" },
+                    { "room": "304", "name": "Кобелева Виктория Валерьевна", "position": "Методист", "phone": "74107" },
+                    { "room": "305", "name": "Лукин Андрей Александрович", "position": "Зам. Главного врача по КЭР", "phone": "74408" },
+                    { "room": "306", "name": "Щепетинова Людмила Васильевна", "position": "Врач-методист", "phone": "74409" },
+                    { "room": "307", "name": "Чурилкина Оксана Александровна", "position": "Старшая м/с", "phone": "74410" },
+                    { "room": "310", "name": "Новиков Андрей Юрьевич", "position": "ВОП", "phone": "74411" },
+                    { "room": "312", "name": "Короткова Ольга Сергеевна", "position": "ВОП", "phone": "74413" },
+                    { "room": "314", "name": "Казак Светлана Анатольевна", "position": "ВОП", "phone": "74414" },
+                    { "room": "315", "name": "", "position": "Оцифровка", "phone": "74415" },
+                    { "room": "316", "name": "Новикова Надежда Сергеевна", "position": "Заведующий 2 терапией", "phone": "74416" },
+                    { "room": "317", "name": "Крылова Надежда Алексеевна", "position": "ВОП", "phone": "74417" },
+                    { "room": "318", "name": "Искакова Светлана Павловна", "position": "Терапевт", "phone": "74419" },
+                    { "room": "319", "name": "Пронькин Андрей Владимирович", "position": "ВОП", "phone": "74420" },
+                    { "room": "321", "name": "Гусейханова Христина Шамиловна", "position": "ВОП", "phone": "74422" },
+                    { "room": "322", "name": "Грагянц Борис Раджевич", "position": "Терапевт (справки)", "phone": "74423" },
+                    { "room": "323", "name": "Арсамекова Селима Умаровна", "position": "Гастроэнтеролог", "phone": "74424" },
+                    { "room": "Холл 4 этаж", "name": "", "position": "Медицинский пост", "phone": "74425" },
+                    { "room": "401", "name": "Кесарева Елена Сергеевна", "position": "Невролог", "phone": "74426" },
+                    { "room": "402", "name": "Гаевская Елена Михайловна", "position": "Невролог", "phone": "74427" },
+                    { "room": "404", "name": "Ронжина Анна Николаевна", "position": "Заведующий консультативным отделением", "phone": "74446" },
+                    { "room": "405", "name": "Нардаева Амина Мергеновна", "position": "Эпидемиолог", "phone": "74428" },
+                    { "room": "406", "name": "", "position": "ФВД (спирометрия)", "phone": "74432" },
+                    { "room": "407", "name": "", "position": "Суточное мониторирование", "phone": "74430" },
+                    { "room": "408", "name": "Варламова Юлия Юрьевна", "position": "Заведующий отделение кардиологии", "phone": "74385" },
+                    { "room": "409", "name": "Варламова Юлия Юрьевна", "position": "Кабинет профилактики тромбоэмболии", "phone": "74432" },
+                    { "room": "410", "name": "Краснокутская Елена Викторовна", "position": "Заведующий отделением функциональной диагностики", "phone": "74433" },
+                    { "room": "413", "name": "Бунина Наталья Георгиевна", "position": "Эндокринолог", "phone": "74394" },
+                    { "room": "414", "name": "Сливец Ольга Николаевна", "position": "Пульманолог", "phone": "74418" },
+                    { "room": "415", "name": "Болдырева Гиляна Владимировна", "position": "Эндокринолог", "phone": "74435" },
+                    { "room": "417", "name": "Проскурякова Ольга Александровна", "position": "Кардиолог", "phone": "74436" },
+                    { "room": "418", "name": "", "position": "ЭКГ", "phone": "74437" },
+                    { "room": "419", "name": "", "position": "Стресс-ЭКГ", "phone": "74438" },
+                    { "room": "420", "name": "", "position": "Тредмил (стресс-ЭКГ)", "phone": "74439" },
+                    { "room": "421", "name": "", "position": "ЭКГ", "phone": "74440" },
+                    { "room": "422", "name": "Лифанова Ирина Ефимовна", "position": "Кардиолог", "phone": "74441" },
+                    { "room": "423", "name": "Курбатова Виктория Васильевна", "position": "Невролог", "phone": "74442" },
+                    { "room": "424", "name": "Шинкарев Сергей Владимирович", "position": "Заведующий отделением неврологии", "phone": "74443" },
+                    { "room": "425", "name": "Негоица Анастасия Валерьевна", "position": "Гастроэнтеролог", "phone": "74444" },
+                    { "room": "426", "name": "Бакотина Анна Евгеньевна", "position": "Эндокринолог", "phone": "74445" }
+                ]
+            },
+            {
+                id: "gu_b",
+                title: "Головное здание (Корпус Б, Миклухо-Маклая 29/2)",
+                contacts: [
+                    { "room": "Холл 1 этаж", "name": "", "position": "Стойка информации", "phone": "30402" },
+                    { "room": "Холл 1 этаж", "name": "", "position": "Охрана", "phone": "30400" },
+                    { "room": "101", "name": "", "position": "Пультовая", "phone": "30401" },
+                    { "room": "102", "name": "Карташова Наталья Геннадьевна", "position": "Отдел кадров", "phone": "30434" },
+                    { "room": "102", "name": "Антипова Валерия Николаевна", "position": "Отдел кадров", "phone": "30435" },
+                    { "room": "102", "name": "Кокорина Анастасия Адольфовна", "position": "Отдел кадров", "phone": "30436" },
+                    { "room": "102", "name": "Куприянова Екатерина Анатольевна", "position": "Отдел кадров", "phone": "30407" },
+                    { "room": "103", "name": "Алексеева Ирина Игоревна", "position": "Начальник отдела кадров", "phone": "30433" },
+                    { "room": "104", "name": "Кулакова Ольга Анатольевна", "position": "Начальник ПЭО", "phone": "30409" },
+                    { "room": "105", "name": "Дарменова Елена Рафиковна", "position": "ПЭО", "phone": "30410" },
+                    { "room": "105", "name": "Неласая Валентина Анатольевна", "position": "ПЭО", "phone": "30412" },
+                    { "room": "105", "name": "Ларина Надежда Васильевна", "position": "ПЭО", "phone": "" },
+                    { "room": "105", "name": "Буракова Елена Евгеньевна", "position": "ПЭО", "phone": "" },
+                    { "room": "105", "name": "Попова Елена Николаевна", "position": "ПЭО", "phone": "" },
+                    { "room": "105", "name": "Канчерова Зухра Равильевна", "position": "ПЭО", "phone": "30413" },
+                    { "room": "105", "name": "Дордждеева Ирина Борисовна", "position": "ПЭО", "phone": "30414" },
+                    { "room": "106", "name": "", "position": "Договорной отдел", "phone": "30415" },
+                    { "room": "106", "name": "", "position": "Договорной отдел", "phone": "30416" },
+                    { "room": "106", "name": "", "position": "Договорной отдел", "phone": "30417" },
+                    { "room": "106", "name": "", "position": "Договорной отдел", "phone": "30418" },
+                    { "room": "106", "name": "", "position": "Договорной отдел", "phone": "30419" },
+                    { "room": "107", "name": "Пинчук Ольга Ивановна", "position": "Юрист", "phone": "30420" },
+                    { "room": "108", "name": "", "position": "Статистика", "phone": "30422; 30423; 30424" },
+                    { "room": "109", "name": "", "position": "Льготы", "phone": "30427; 30426; 30425" },
+                    { "room": "110", "name": "Соколовская Вероника Александровна", "position": "Договорной отдел", "phone": "30430" },
+                    { "room": "110", "name": "Рытов Константин Владимирович", "position": "Договорной отдел", "phone": "30431; 30428; 30429; 30432" },
+                    { "room": "112", "name": "Богатиков Олег Николаевич", "position": "Охрана труда", "phone": "30438" },
+                    { "room": "112", "name": "Еликов Павел Иванович", "position": "Охрана труда", "phone": "30438" },
+                    { "room": "113", "name": "Новикова Елена Вячеславовна", "position": "Инженер по мед. оборудованию", "phone": "30439" },
+                    { "room": "202", "name": "Данкова Светлана Юрьевна", "position": "Старшая м/с отделения лучевой диагностики", "phone": "30444" },
+                    { "room": "206", "name": "", "position": "КТ", "phone": "30446" },
+                    { "room": "207", "name": "", "position": "Остеоденситометрия", "phone": "30448" },
+                    { "room": "208", "name": "", "position": "Рентген", "phone": "30449" },
+                    { "room": "210", "name": "", "position": "Рентген", "phone": "30450" },
+                    { "room": "211", "name": "Карапетян Анаит Гамлетовна", "position": "Заведующий отделением лучевой диагностики", "phone": "30451" },
+                    { "room": "218", "name": "Шуляковская Оксана Анатольевна", "position": "Начальник СИО", "phone": "30452" },
+                    { "room": "219", "name": "", "position": "Прием биоматериалов", "phone": "30455" },
+                    { "room": "220", "name": "", "position": "Забор крови", "phone": "30454" },
+                    { "room": "222", "name": "", "position": "Процедурная (уколы)", "phone": "30456" },
+                    { "room": "223", "name": "", "position": "Процедурная (уколы)", "phone": "" },
+                    { "room": "224", "name": "", "position": "Вакцинопрофилактика", "phone": "30458" },
+                    { "room": "226", "name": "Квирая Додо Аршалиевна", "position": "Заведующий диагностическим отделением", "phone": "30460" },
+                    { "room": "227", "name": "Макарова Наталья Александровна", "position": "Старшая м/с диагностического отделения", "phone": "30462" },
+                    { "room": "228", "name": "", "position": "Процедурная (пункция мол.жел.)", "phone": "30463" },
+                    { "room": "229", "name": "Богова Земфира Казантемировна", "position": "УЗИ (мол. Жел.)", "phone": "30464" },
+                    { "room": "230", "name": "Толкачев Илья Борисович", "position": "УЗИ", "phone": "30465" },
+                    { "room": "231", "name": "Слободин Константин Эдуардович", "position": "Заведующий отделением УЗИ", "phone": "30466" },
+                    { "room": "232", "name": "Звездина Каринэ Юрьевна", "position": "УЗИ", "phone": "30467" },
+                    { "room": "233", "name": "Егорова Елена Владимировна", "position": "УЗИ", "phone": "30468" },
+                    { "room": "234", "name": "", "position": "Маммография", "phone": "30469" },
+                    { "room": "Холл 3 этаж", "name": "", "position": "Стойка информации", "phone": "30470" },
+                    { "room": "329", "name": "Кудряшова Елена Александровна", "position": "Старшая м/с МПУ", "phone": "30487" },
+                    { "room": "335", "name": "Бабаханова Ирина Батужоровна", "position": "Специалист по рекламе ПМУ", "phone": "30492" },
+                    { "room": "335", "name": "Слободенюк Юлия", "position": "Юристконсул", "phone": "30492" },
+                    { "room": "336", "name": "Темнякв Вячеслав Валерьевич", "position": "Начальник отделения по оказанию МПУ", "phone": "30493" },
+                    { "room": "403", "name": "Жерепа Сергей Иванович", "position": "Хирург", "phone": "30497" },
+                    { "room": "405", "name": "Яковлев Павел Анатольевич", "position": "Травматолог - ортопед", "phone": "30498" },
+                    { "room": "407", "name": "Магомедов Надир Шамсутдинович", "position": "Хирург", "phone": "30499" },
+                    { "room": "409", "name": "Узарашвили Мамука Валерьевич", "position": "Хирург", "phone": "30500" },
+                    { "room": "411", "name": "Языкова Татьяна Геннадьевна", "position": "Старшая м/с отделения хирургии", "phone": "30501" },
+                    { "room": "414", "name": "Юдин Александр Васильевич", "position": "Заведующий отделением хирургии", "phone": "30504" },
+                    { "room": "415", "name": "Павлова Анна Андреевна", "position": "Старшая медицинская сестра", "phone": "30505" },
+                    { "room": "423", "name": "Оружмагомедов Магомед Севдигарович", "position": "Уролог", "phone": "30506" },
+                    { "room": "424", "name": "Аксенов Андрей Анатольевич", "position": "Уролог", "phone": "30507" },
+                    { "room": "427", "name": "Зелюкин Александр Алексеевич", "position": "Оториноларинголог", "phone": "30508" },
+                    { "room": "429", "name": "Шарыгин Александр Сергеевич", "position": "Оториноларинголог", "phone": "30509" },
+                    { "room": "Холл 5 этаж", "name": "", "position": "Стойка центра здоровья", "phone": "30510" },
+                    { "room": "501", "name": "Баталова Вероника Павловна", "position": "Заведующий отделением эндоскопии", "phone": "30512" },
+                    { "room": "502", "name": "", "position": "КДК (Центр здоровья)", "phone": "30513" },
+                    { "room": "503", "name": "", "position": "Забор крови (Центр здоровья)", "phone": "30514" },
+                    { "room": "504", "name": "", "position": "Вакцинопрофилактика (Центр здоровья)", "phone": "30515" },
+                    { "room": "505", "name": "Дородникова Е.В.", "position": "Терапевт (Центр здоровья)", "phone": "30516" },
+                    { "room": "505", "name": "Кулакова Н.А.", "position": "Терапевт (Центр здоровья)", "phone": "30516" },
+                    { "room": "506", "name": "Рябова М.В.", "position": "Эндоскопист", "phone": "" },
+                    { "room": "506", "name": "Бакаев М.А.", "position": "Эндоскопист", "phone": "" },
+                    { "room": "506", "name": "Баталова В.П.", "position": "Эндоскопист", "phone": "" },
+                    { "room": "507", "name": "", "position": "Гастроскопия", "phone": "" },
+                    { "room": "508", "name": "", "position": "Гастроскопия", "phone": "" },
+                    { "room": "509", "name": "Толдиев Р.Х.", "position": "Эндоскопист", "phone": "30518" },
+                    { "room": "509", "name": "Демиров Г.Б.", "position": "Эндоскопист", "phone": "30518" },
+                    { "room": "509", "name": "Аллаберганов Б.К.", "position": "Эндоскопист", "phone": "30518" },
+                    { "room": "510", "name": "Кундохова М.С.", "position": "Акушер-гинеколог (Центр здоровья)", "phone": "30519" },
+                    { "room": "510", "name": "Астафьева Л.Н.", "position": "Акушер-гинеколог (Центр здоровья)", "phone": "30519" },
+                    { "room": "511", "name": "Денисова Людмила Владимировна", "position": "Смотровая (Центр здоровья)", "phone": "" },
+                    { "room": "512", "name": "Сафронова М.А.", "position": "Терапевт (Центр здоровья)", "phone": "30520" },
+                    { "room": "512", "name": "Людина Л.И.", "position": "Терапевт (Центр здоровья)", "phone": "30520" },
+                    { "room": "513", "name": "Хващинская А.Ю.", "position": "Терапевт (Центр здоровья)", "phone": "30521" },
+                    { "room": "513", "name": "Болдина М.Н.", "position": "Терапевт (Центр здоровья)", "phone": "30521" },
+                    { "room": "514", "name": "Крапчин С.В.", "position": "Терапевт (Центр здоровья)", "phone": "30522" },
+                    { "room": "514", "name": "Кладовикова Н.А.", "position": "Терапевт (Центр здоровья)", "phone": "30522" },
+                    { "room": "522", "name": "Шкинедорова Мария Николаевна", "position": "Колопроктолог", "phone": "30523" },
+                    { "room": "523", "name": "Путилов Сергей Георгиевич", "position": "Колопроктолог", "phone": "30524" },
+                    { "room": "524", "name": "", "position": "Школа здоровья", "phone": "30525" },
+                    { "room": "525", "name": "", "position": "Школа сахарного диабета", "phone": "30526" },
+                    { "room": "526", "name": "Шумилкина Ирина Александровна", "position": "Заведующий отделения медицинской профилактики", "phone": "30527" },
+                    { "room": "527", "name": "Хуснуллина Янна Сергеевна", "position": "Старшая м/с отделения медицинской профилактики", "phone": "30528" },
+                    { "room": "601", "name": "Сикоева Зарина Майрамовна", "position": "Кабинет функциональной диагностики (Эхо-КГ)", "phone": "30532" },
+                    { "room": "602", "name": "Пешнева Алла Львовна", "position": "Кабинет функциональной диагностики (СМАД)", "phone": "30533" },
+                    { "room": "603", "name": "Неликаева Татьяна Николаевна", "position": "Офтальмолог", "phone": "30534" },
+                    { "room": "605", "name": "Панфилова Татьяна Андреевна", "position": "Офтальмолог", "phone": "30535" },
+                    { "room": "606", "name": "Александрова Наталья Эдуардовна", "position": "Офтальмолог", "phone": "30536" },
+                    { "room": "608", "name": "Мельникова Ирина Сергеевна", "position": "Офтальмолог", "phone": "30537" },
+                    { "room": "609", "name": "Мельникова Ирина Сергеевна", "position": "Заведующий офтальмологическим отделением", "phone": "30538" },
+                    { "room": "610", "name": "Клевцова Екатерина Андреевна", "position": "Кабинет функциональной диагностики (УЗДС)", "phone": "30539" },
+                    { "room": "611", "name": "Кусова Залина Рамазановна", "position": "Кабинет функциональной диагностики (Эхо-КГ)", "phone": "30540" },
+                    { "room": "612", "name": "Опольская Елена Игоревна", "position": "Кабинет функциональной диагностики (УЗДС)", "phone": "30541" },
+                    { "room": "703", "name": "", "position": "Секретарская", "phone": "30553, 30556" },
+                    { "room": "703", "name": "", "position": "Приемная главного врача", "phone": "30557" },
+                    { "room": "704", "name": "Безымянный Алексей Сергеевич", "position": "Главный врач", "phone": "30558" },
+                    { "room": "706", "name": "Бузин Николай Михайлович", "position": "Заведующий по ОМО и КЭР", "phone": "30559" },
+                    { "room": "707", "name": "Иванов Михаил Дмитриевич", "position": "Информационно-аналетический отдел", "phone": "30560" },
+                    { "room": "707", "name": "Пархоменко Михаил Генрихович", "position": "Информационно-аналетический отдел", "phone": "30561" },
+                    { "room": "708", "name": "", "position": "", "phone": "" },
+                    { "room": "709", "name": "Купор Наталья Михайловна", "position": "Зам. главного врача по медицинской части", "phone": "30564" },
+                    { "room": "710", "name": "Рябкова Кристина Александровна", "position": "Зам. Главного врача по профилактике", "phone": "30565" },
+                    { "room": "711", "name": "Лукин Андрей Александрович", "position": "Зам. Главного врача по КЭР", "phone": "30566" },
+                    { "room": "720", "name": "Цветкова Альбина Владимировна", "position": "Главная медицинская сестра", "phone": "30562" },
+                    { "room": "721", "name": "Лутиков Александр Сергеевич", "position": "ОМО", "phone": "30555" },
+                    { "room": "722", "name": "Ильин Дмитрий Вадимович", "position": "ГО и ЧС", "phone": "30569" },
+                    { "room": "723", "name": "Люлькевич Ольга Петровна", "position": "Начальник Хозчасти", "phone": "30570" },
+                    { "room": "724", "name": "Галинский Сергей Михайлович", "position": "Начальник МТО", "phone": "305" },
+                    { "room": "725", "name": "", "position": "Конференц-зал", "phone": "" }
+                ]
+            },
+            {
+                id: "f1",
+                title: "Филиал №1 (Каховка 12А)",
+                contacts: [
+                    { "room": "Холл 4 этаж", "name": "Стойка", "position": "Стойка", "phone": "40872" },
+                    { "room": "403", "name": "Рябкова Кристина Александровна", "position": "Заведующий филиалом", "phone": "40860" },
+                    { "room": "Стойка 403", "name": "Рабелова Нина Анатольевна", "position": "Делопроизводитель", "phone": "40859" },
+                    { "room": "406", "name": "Лазарева Оксана Николаевна", "position": "Ст. м/с филиал", "phone": "40861" },
+                    { "room": "410", "name": "КДК", "position": "КДК", "phone": "40864" },
+                    { "room": "412", "name": "Физиотерапия", "position": "Физиотерапия", "phone": "40865" },
+                    { "room": "413", "name": "Массаж", "position": "Массаж", "phone": "40818" },
+                    { "room": "414", "name": "Калимуллина Лариса Александровна", "position": "Врач ФТО", "phone": "40866" },
+                    { "room": "415", "name": "Литвиненко Андрей Борисович", "position": "Врач ЛФК", "phone": "40869" },
+                    { "room": "417", "name": "Зал ЛФК", "position": "Зал ЛФК", "phone": "40869" },
+                    { "room": "419", "name": "Смотровой кабинет", "position": "Смотровой кабинет", "phone": "40870" },
+                    { "room": "420", "name": "Смирнова Ирина Владимировна", "position": "Врач-методист", "phone": "" },
+                    { "room": "Холл 3 этаж", "name": "Медицинский пост", "position": "Медицинский пост", "phone": "40858" },
+                    { "room": "301", "name": "Алексанян Аргине Валерьевна", "position": "Врач ФД", "phone": "40841" },
+                    { "room": "302", "name": "Рогова Марина Олеговна", "position": "Врач эндокринолог", "phone": "40842" },
+                    { "room": "303", "name": "Кудряшов Николай Николаевич", "position": "Врач хирург", "phone": "40847" },
+                    { "room": "", "name": "Гирлин Максим Егорович", "position": "Врач хирург", "phone": "40847" },
+                    { "room": "305", "name": "Михайлутин Анатолий Владимирович", "position": "Врач оториноларинголог", "phone": "40844" },
+                    { "room": "306", "name": "Читанава Георгий Юрьевич", "position": "Врач уролог", "phone": "40845" },
+                    { "room": "309", "name": "Гудень Дмитрий Евгеньевич", "position": "Врач хирург", "phone": "40847" },
+                    { "room": "312", "name": "Белов Павел Николаевич", "position": "Врач невролог", "phone": "40848" },
+                    { "room": "313", "name": "Ломшина Татьяна Михайловна", "position": "Врач - кардиолог", "phone": "40849" },
+                    { "room": "314", "name": "Лисина Светлана Геннадьевна", "position": "Врач эндокринолог", "phone": "40850" },
+                    { "room": "317", "name": "Рентген", "position": "Рентген", "phone": "40852" },
+                    { "room": "320", "name": "Кусова Залина Рамазановна", "position": "Эхо КГ", "phone": "40853" },
+                    { "room": "", "name": "Магомедова М.К.", "position": "", "phone": "" },
+                    { "room": "321", "name": "Перхова Дина Анатольевна", "position": "УЗИ", "phone": "40854" },
+                    { "room": "", "name": "Нугис Ольга Давидовна", "position": "", "phone": "" },
+                    { "room": "322", "name": "Гирина Олеся Владимировна", "position": "Врач офтальмолог", "phone": "40855" },
+                    { "room": "", "name": "Абдулмуслимова Зарема Курбатовна", "position": "", "phone": "" },
+                    { "room": "325", "name": "Ралдугина Марина Анатольевна", "position": "медсестра ЭКГ", "phone": "40857" },
+                    { "room": "Холл 2 этаж", "name": "Медицинский пост", "position": "Медицинский пост", "phone": "40819" },
+                    { "room": "201", "name": "Донин Антон Михайлович", "position": "Врач общей практики", "phone": "40820" },
+                    { "room": "203", "name": "Булискерия Нана Хутаевна", "position": "Врач общей практики", "phone": "40822" },
+                    { "room": "204", "name": "Воронков Максим Алексеевич", "position": "Врач терапевт участковый", "phone": "40823" },
+                    { "room": "205", "name": "Шинкаренко Надежда Геннадьевна", "position": "Зав. 3 терапевтического отделения", "phone": "40824" },
+                    { "room": "", "name": "Шендель Марина Александровна", "position": "Зав. 4 терапевтического отделения", "phone": "" },
+                    { "room": "206", "name": "Мельникова Оксана Александровна", "position": "Врач-методист", "phone": "40825" },
+                    { "room": "208", "name": "Акжанова Алена Нурлановна", "position": "Врач терапевт участковый", "phone": "40867" },
+                    { "room": "209", "name": "Сухих Маргарита Михайловна", "position": "и.о Ст. м/с 3 терапевтического отделения", "phone": "40828" },
+                    { "room": "", "name": "Денисенко Наталья Дмитриевна", "position": "Ст. м/с 4 терапевтического отделения", "phone": "" },
+                    { "room": "211", "name": "Родионова Мария Александровна", "position": "Врач общей практики", "phone": "40829" },
+                    { "room": "212", "name": "КДК", "position": "КДК", "phone": "40830" },
+                    { "room": "213", "name": "Фролова Светлана Ивановна", "position": "Врач общей практики", "phone": "40831" },
+                    { "room": "215", "name": "Болдырева Людмила Ивановна", "position": "Врач общей практики", "phone": "40832" },
+                    { "room": "216", "name": "Харазия Саида Дмитриевна", "position": "Врач терапевт участковый", "phone": "40833" },
+                    { "room": "217", "name": "Кучер София Сафарбиевна", "position": "Врач кардиолог", "phone": "40834" },
+                    { "room": "", "name": "Фарафонтов Антон Александрович", "position": "Врач терапевт участковый", "phone": "" },
+                    { "room": "218", "name": "Праскурина Екатерина Владимировна", "position": "Врач общей практики", "phone": "40835" },
+                    { "room": "219", "name": "Цыганова Татьяна Васильевна", "position": "Врач общей практики", "phone": "40836" },
+                    { "room": "220", "name": "Белоусов Павел Андреевич", "position": "Врач терапевт участковый", "phone": "40837" },
+                    { "room": "221", "name": "Родина Лариса Петровна", "position": "Врач общей практики (хроники)", "phone": "40839" },
+                    { "room": "222", "name": "Коробова Татьяна Романовна", "position": "Врач терапевт участковый", "phone": "40839" },
+                    { "room": "224", "name": "Иванов Владислав Олегович", "position": "Врач общей практики", "phone": "40840" },
+                    { "room": "", "name": "Скачек Виктория Григорьевна", "position": "Врач эндокринолог", "phone": "" },
+                    { "room": "Холл 1 этаж", "name": "Стойка информации", "position": "Стойка информации", "phone": "40809\n40810" },
+                    { "room": "101", "name": "Пост охраны", "position": "Пост охраны", "phone": "40807" },
+                    { "room": "102", "name": "Аптечный пункт", "position": "Аптечный пункт", "phone": "40808" },
+                    { "room": "103", "name": "Турченик Игорь Валерьевич", "position": "Заведующий хозяйством", "phone": "40811" },
+                    { "room": "106", "name": "Мамуков Александр Вадимович", "position": "Дежурный врач", "phone": "40813" },
+                    { "room": "", "name": "Егоров Александр Владимирович", "position": "Дежурный врач", "phone": "" },
+                    { "room": "107", "name": "Пасечник Кирилл Дмитриевич", "position": "Кабинет выдач справок и направлений", "phone": "40814" },
+                    { "room": "110", "name": "Вакцинопрофилактика", "position": "Вакцинопрофилактика", "phone": "40815" },
+                    { "room": "111", "name": "Прием биоматериалов", "position": "Прием биоматериалов", "phone": "40816" },
+                    { "room": "112", "name": "Процедурный", "position": "Процедурный", "phone": "40817" },
+                    { "room": "114", "name": "Забор крови", "position": "Забор крови", "phone": "" }
+                ]
+            },
+            {
+                id: "f2",
+                title: "Филиал №2 (Введенского 14А)",
+                contacts: [
+                    { "room": "401", "name": "Конференц зал", "position": "Конференц зал", "phone": "" },
+                    { "room": "404", "name": "Гамидова Джума Гаджиевна", "position": "Заведующий филиалом", "phone": "67674" },
+                    { "room": "", "name": "Романова Наталия Николаевна", "position": "Делопроизводитель", "phone": "67612" },
+                    { "room": "407", "name": "Ковальчук Светлана Анатольевна", "position": "Ст. м/с филиала", "phone": "67614" },
+                    { "room": "416", "name": "Тюгай Ольга Владимировна", "position": "Врач - хирург", "phone": "67666" },
+                    { "room": "419", "name": "Пулатов Манучехр Мухсинджонович", "position": "Врач - хирург", "phone": "67669" },
+                    { "room": "422", "name": "Сергеева Анна Федоровна", "position": "Смотровой", "phone": "67672" },
+                    { "room": "423", "name": "Исаева Алена Анатольевна", "position": "Старший администратор", "phone": "67673" },
+                    { "room": "301", "name": "", "position": "", "phone": "67651" },
+                    { "room": "302", "name": "Трутко Ирина Григорьевна", "position": "ФВД", "phone": "67652" },
+                    { "room": "303", "name": "Безбородкина Анна Сергеевна", "position": "Врач - кардиолог", "phone": "67653" },
+                    { "room": "305", "name": "Неликаев Дмитрий Юрьевич", "position": "Врач - оториноларинголог", "phone": "67655" },
+                    { "room": "306", "name": "Кулинченко Андрей Игоревич", "position": "Врач - уролог", "phone": "67656" },
+                    { "room": "308", "name": "Исматов Бахтиер Турдиевич", "position": "Врач - офтальмолог", "phone": "67675" },
+                    { "room": "309", "name": "Накаев Шамиль Русланович", "position": "Врач - методист", "phone": "67638" },
+                    { "room": "310", "name": "Мозгова Ирина Юрьевна", "position": "Ст. м/с терапевтического отделения", "phone": "67639" },
+                    { "room": "313", "name": "Ивашкин Алексей Павлович", "position": "Врач - невролог", "phone": "67640" },
+                    { "room": "314", "name": "Самсонова Ольга Семеновна", "position": "Врач - кардиолог", "phone": "67641" },
+                    { "room": "315", "name": "Антонова Ольга Николаевна", "position": "Врач - эндокринолог", "phone": "67642" },
+                    { "room": "317", "name": "Маммография", "position": "Маммография", "phone": "67644" },
+                    { "room": "318", "name": "Рентген", "position": "Рентген", "phone": "67645" },
+                    { "room": "320", "name": "Флюрография", "position": "Флюрография", "phone": "" },
+                    { "room": "321", "name": "Кахцян Лена Варздатовна", "position": "УЗИ", "phone": "67647" },
+                    { "room": "322", "name": "Арпханова Зейнап Совбановна", "position": "", "phone": "" },
+                    { "room": "323", "name": "Музафарова Мохира Панжиевна", "position": "Врач - офтальмолог", "phone": "67648" },
+                    { "room": "", "name": "Муратов Бахтиер Масудович", "position": "Врач - офтальмолог", "phone": "" },
+                    { "room": "326", "name": "ЭКГ", "position": "ЭКГ", "phone": "67650" },
+                    { "room": "201", "name": "Фролова Наталья Николаевна", "position": "Врач - терапевт", "phone": "67629" },
+                    { "room": "203", "name": "Барт Дмитрий Борисович", "position": "Врач общей практики", "phone": "67631" },
+                    { "room": "204", "name": "Гаврилин Матвей Геннадьевич", "position": "Врач - терапевт", "phone": "67632" },
+                    { "room": "205", "name": "Телушкина Ольга Ивановна", "position": "Зав. терапевтического отделения", "phone": "67604" },
+                    { "room": "206", "name": "Кононова Татьяна Валериевна", "position": "Врач - методист", "phone": "67634" },
+                    { "room": "208", "name": "Гриненко Дина Владимировна", "position": "Зав. терапевтического отделения", "phone": "67660" },
+                    { "room": "209", "name": "Мартиросова Яна Сергеевна", "position": "Ст. м/с терапевтического отделения", "phone": "67637" },
+                    { "room": "212", "name": "Сатырова Альфира Алимжановна", "position": "Врач общей практики", "phone": "67616" },
+                    { "room": "214", "name": "Федосеева Наталия Валарьевна", "position": "Врач общей практики", "phone": "67618" },
+                    { "room": "216", "name": "Кузичкина Мария Викторовна", "position": "Врач общей практики", "phone": "67619" },
+                    { "room": "217", "name": "Гебекова Юлдуз Саладиновна", "position": "Врач общей практики", "phone": "67620" },
+                    { "room": "218", "name": "Ханмурзаева Фатима Фазильевна", "position": "Врач общей практики (хроники)", "phone": "67615" },
+                    { "room": "219", "name": "Андрюшкина Анастасия Владимировна", "position": "Врач общей практики (хроники)", "phone": "67622" },
+                    { "room": "220", "name": "Арсамекова Карина Умаровна", "position": "Врач - терапевт", "phone": "67623" },
+                    { "room": "221", "name": "Ходор Игорь Ефимович", "position": "Врач - невролог", "phone": "67624" },
+                    { "room": "222", "name": "Щепетова Диана Викторовна", "position": "Врач - терапевт", "phone": "67625" },
+                    { "room": "223", "name": "Рахмихудоева Нигина Гуламадовна", "position": "Врач общей практики", "phone": "67626" },
+                    { "room": "225", "name": "Иванова Светлана Николаевна", "position": "Врач общей практики", "phone": "67628" },
+                    { "room": "Холл 1 этаж", "name": "Стойка информации", "position": "Стойка информации", "phone": "67633\n67603" },
+                    { "room": "Холл 1 этаж", "name": "Пост охраны", "position": "Пост охраны", "phone": "985-794-61-04" },
+                    { "room": "102", "name": "Аптечный пункт", "position": "Аптечный пункт", "phone": "67609" },
+                    { "room": "103", "name": "Лебедь Екатерина Ивановна", "position": "Фельдшер", "phone": "67610" },
+                    { "room": "106", "name": "Врач ОРВИ", "position": "Врач ОРВИ", "phone": "67599" },
+                    { "room": "107", "name": "Дежурный врач", "position": "Дежурный врач", "phone": "67600" },
+                    { "room": "111", "name": "Прививочный", "position": "Прививочный", "phone": "67601" },
+                    { "room": "114", "name": "Забор крови", "position": "Забор крови", "phone": "67608" }
+                ]
+            },
+            {
+                id: "f3",
+                title: "Филиал №4 (Академика Бакулева 18)",
+                contacts: [
+                    { "room": "516", "name": "Петрова Марина Викторовна", "position": "Ст. м/с филиала", "phone": "56391" },
+                    { "room": "517", "name": "Гудиев Черси Гарсолтович", "position": "Заведующий филиалом", "phone": "56393" },
+                    { "room": "522", "name": "Фуртуна Марина Евгеньевна", "position": "Врач методист", "phone": "56389" },
+                    { "room": "", "name": "Совертека Наталья Юрьевна", "position": "Делопроизводитель", "phone": "56392" },
+                    { "room": "524", "name": "Горожанкин Виктор Юрьевич", "position": "Начальник хозяйчасти", "phone": "56388" },
+                    { "room": "401", "name": "Гасанова Ума Кадировна", "position": "Медицинская сестра ФД", "phone": "56380" },
+                    { "room": "402", "name": "Чернышёва Наталья Николаевна", "position": "Врач-УЗДГ", "phone": "56381" },
+                    { "room": "403", "name": "Бычкова Надежда Александровна", "position": "ЭКГ", "phone": "56382" },
+                    { "room": "404", "name": "Сурнина Марина Сергеевна", "position": "Врач-кардиолог", "phone": "56385" },
+                    { "room": "405", "name": "Дживанян Астхик Акоповна", "position": "Врач-офтальмолог", "phone": "56384" },
+                    { "room": "407", "name": "Агабабаева Ирина Азатовна", "position": "Врач - эндокринолог", "phone": "56379" },
+                    { "room": "409", "name": "ПРИВИВОЧНЫЙ КАБИНЕТ", "position": "ПРИВИВОЧНЫЙ КАБИНЕТ", "phone": "56377" },
+                    { "room": "413", "name": "Малкарова Алла Зуберовна", "position": "Акушер-гинеколог", "phone": "56372" },
+                    { "room": "419", "name": "Ушакова Юлия Александровна", "position": "Маммография", "phone": "56383" },
+                    { "room": "420", "name": "ФЛЮОРОГРАФИЯ", "position": "ФЛЮОРОГРАФИЯ", "phone": "56374" },
+                    { "room": "421", "name": "РЕНТГЕН", "position": "РЕНТГЕН", "phone": "56374" },
+                    { "room": "422", "name": "РЕНТГЕН", "position": "РЕНТГЕН", "phone": "56374" },
+                    { "room": "423", "name": "Колодная Наталья Ильинична", "position": "Врач-УЗИ", "phone": "56408" },
+                    { "room": "424", "name": "Кнежевич Жанна Юрьевна", "position": "Врач-УЗИ", "phone": "56386" },
+                    { "room": "426", "name": "Абдулхалимова Аминат Султановна", "position": "Ст администратор", "phone": "56360" },
+                    { "room": "428", "name": "Савельев Сергей Геннадьевич", "position": "Врач-терапевт", "phone": "56373" },
+                    { "room": "430", "name": "Цутиева Аминат Шамхановна", "position": "Врач-терапевт", "phone": "56390" },
+                    { "room": "431", "name": "Абубакаров Салман Сулейманович", "position": "Врач общей практики", "phone": "56403" },
+                    { "room": "304", "name": "Мазаев Шамиль Мурадович", "position": "Врач-оториноларинголог", "phone": "56363" },
+                    { "room": "305", "name": "Сорокина Татьяна Михайловна", "position": "Врач-уролог", "phone": "56362" },
+                    { "room": "307", "name": "Дичинова Надежда Николаевна", "position": "Врач-невролог", "phone": "56361" },
+                    { "room": "309", "name": "Хириев Руслан Магомедович", "position": "Врач-хирург", "phone": "56364" },
+                    { "room": "311", "name": "Панов Алексей Николаевич", "position": "Врач-терапевт", "phone": "56370" },
+                    { "room": "", "name": "Рабцевич Алёна Эдуардовна", "position": "Врач-терапевт", "phone": "" },
+                    { "room": "312", "name": "Шерегова Елена Николаевна", "position": "Заведующий ТО № 09", "phone": "56369" },
+                    { "room": "313", "name": "Шалимова Людмила Николаевна", "position": "Врач общей практики", "phone": "56353" },
+                    { "room": "314", "name": "Корсаева Людмила Алексеевна", "position": "Врач общей практики", "phone": "56367" },
+                    { "room": "316", "name": "Соловова Кристина Константиновна", "position": "Врач-терапевт", "phone": "56358" },
+                    { "room": "Холл 2 этаж", "name": "Медицинский пост", "position": "Медицинский пост", "phone": "56354" },
+                    { "room": "203", "name": "КАБИНЕТ МЕД ПРОФИЛАКТИКИ", "position": "КАБИНЕТ МЕД ПРОФИЛАКТИКИ", "phone": "56355" },
+                    { "room": "204", "name": "Абрурахманова Севиля Казбековна", "position": "Дежурный врач", "phone": "56356" },
+                    { "room": "", "name": "Ким Валентина Вадимовна", "position": "Дежурный врач", "phone": "" },
+                    { "room": "206", "name": "Капустина Юлия Викторовна", "position": "Врач общей практики - Хроники", "phone": "56365" },
+                    { "room": "207", "name": "Хутиева Хава Руслановна", "position": "Врач-терапевт", "phone": "56359" },
+                    { "room": "208", "name": "Чехонадских Анна Ивановна", "position": "СТ медицинская сестра ТО № 10", "phone": "56352" },
+                    { "room": "209", "name": "Чернега Елена Анатольевна", "position": "СТ медицинская сестра ТО № 09", "phone": "56351" },
+                    { "room": "211", "name": "Неженцев Михаил Юрьевич", "position": "Врач общей практики", "phone": "56366" },
+                    { "room": "212", "name": "Футоран Нина Анатольевна", "position": "Врач общей практики", "phone": "56349" },
+                    { "room": "213", "name": "Епифанова Виктория Алексеевна", "position": "Врач общей практики", "phone": "56348" },
+                    { "room": "215", "name": "Полякова Наталья Викторовна", "position": "Врач общей практики", "phone": "56346" },
+                    { "room": "216", "name": "Поляковская Джерен Альбертовна", "position": "Заведующий ТО № 10", "phone": "56345" },
+                    { "room": "Холл 1 этаж", "name": "Стойка информации", "position": "Стойка информации", "phone": "56344" },
+                    { "room": "Холл 1 этаж", "name": "Пост охраны", "position": "Пост охраны", "phone": "56402" },
+                    { "room": "109", "name": "ПРОЦЕДУРНЫЙ КАБИНЕТ", "position": "ПРОЦЕДУРНЫЙ КАБИНЕТ", "phone": "56341" },
+                    { "room": "107", "name": "ОРВИ", "position": "ОРВИ", "phone": "56339" },
+                    { "room": "106", "name": "ОРВИ", "position": "ОРВИ", "phone": "56338" },
+                    { "room": "105", "name": "КВСИН", "position": "КВСИН", "phone": "56337" },
+                    { "room": "104", "name": "АПТЕКА", "position": "АПТЕКА", "phone": "56336" }
+                ]
+            },
+            {
+                id: "f5",
+                title: "Филиал №5 (Профсоюзная 111А)",
+                contacts: [
+                    { "room": "507", "name": "Ермолаева Татаьяна Игоревна", "position": "Заведующий филиалом", "phone": "23240" },
+                    { "room": "", "name": "Арутюнова Мария Викторовна", "position": "Делопроизводитль", "phone": "23242" },
+                    { "room": "508", "name": "Шачинова Элина Шамильевна", "position": "Врач - методист по КЭР", "phone": "23239" },
+                    { "room": "512", "name": "Бисенгалиева Венера Рифатовна", "position": "Ст. м/с филиала", "phone": "23241" },
+                    { "room": "Холл 4 этаж", "name": "Медицинский пост", "position": "Медицинский пост", "phone": "23209" },
+                    { "room": "403", "name": "Ким Евгения Владимировна", "position": "Врач - невролог", "phone": "23229" },
+                    { "room": "404", "name": "Гулова Мария Робертовна", "position": "УЗИ", "phone": "23230" },
+                    { "room": "405", "name": "Овакимян Сусанна Микаэловна", "position": "УЗИ", "phone": "23231" },
+                    { "room": "406", "name": "Бусаров Сергей Леонидович", "position": "ЭХО-КГ", "phone": "23232" },
+                    { "room": "411", "name": "Ординаторская", "position": "Ординаторская", "phone": "23228" },
+                    { "room": "415", "name": "Рентген", "position": "Рентген", "phone": "23214" },
+                    { "room": "417", "name": "Рентген", "position": "Рентген", "phone": "23217" },
+                    { "room": "418", "name": "Оганесян Мариам Вштуниева", "position": "УЗИ", "phone": "23219" },
+                    { "room": "419", "name": "Ефименко Ольга Михайловна", "position": "УЗИ", "phone": "23218" },
+                    { "room": "423", "name": "Прививочный", "position": "Прививочный", "phone": "23216" },
+                    { "room": "424", "name": "КДК", "position": "КДК", "phone": "23217" },
+                    { "room": "427", "name": "Гагуева Залина Рашидовна", "position": "Смотровой кабинет", "phone": "23223" },
+                    { "room": "304", "name": "Кравец Александр Юрьевич", "position": "Врач - оториноларинголог", "phone": "23205" },
+                    { "room": "305", "name": "Сорокин Валерий Геннадьевич", "position": "Врач - уролог", "phone": "23206" },
+                    { "room": "307", "name": "Иванова Алёна Дмитриевна", "position": "Врач общей практики", "phone": "23207" },
+                    { "room": "309", "name": "Мун Виталий Алексеевич", "position": "Врач - хирург", "phone": "23208" },
+                    { "room": "312", "name": "Сарыев Назир Дахирович", "position": "Врач - офтальмолог", "phone": "23210" },
+                    { "room": "313", "name": "Саетгараева Валентина Евгеньевна", "position": "Врач - кардиолог", "phone": "" },
+                    { "room": "314", "name": "ЭКГ", "position": "ЭКГ", "phone": "23213" },
+                    { "room": "315", "name": "Фукциональная диагностика", "position": "Фукциональная диагностика", "phone": "23154" },
+                    { "room": "316", "name": "Фукциональная диагностика", "position": "Фукциональная диагностика", "phone": "23211" },
+                    { "room": "317", "name": "Савиных Инесса Георгиевна", "position": "Врач общей практики", "phone": "23191" },
+                    { "room": "318", "name": "Джамалудинова Хамиз Магомедовна", "position": "Врач общей практики", "phone": "23192\n23193" },
+                    { "room": "320", "name": "Курманова Ольга Георгиевна", "position": "Врач - терапевт", "phone": "23194" },
+                    { "room": "321", "name": "Пантелеева Софья Викторовна", "position": "Врач - эндокринолог", "phone": "23189" },
+                    { "room": "322", "name": "Алхасова Ашура Гасангусейновна", "position": "Врач - невролог", "phone": "23195" },
+                    { "room": "Холл 2 этаж", "name": "Медицинский пост", "position": "Медицинский пост", "phone": "23176" },
+                    { "room": "203", "name": "Яценко Ольга Николаевна", "position": "Врач общей практики", "phone": "23165" },
+                    { "room": "204", "name": "Зинченко Олег Владимирович", "position": "Дежурный врач", "phone": "23164" },
+                    { "room": "", "name": "Магомедова Луиза Гасангусейновна", "position": "", "phone": "" },
+                    { "room": "", "name": "Муртазалиева Джамилат Арсеновна", "position": "", "phone": "" },
+                    { "room": "206", "name": "Карягина Елена Геннадьевна", "position": "Врач общей практики", "phone": "23166" },
+                    { "room": "207", "name": "Рыжкова Юлия Андреевна", "position": "Фельдшер", "phone": "23167" },
+                    { "room": "", "name": "Лапшина Кристина Александровна", "position": "Фельдшер", "phone": "" },
+                    { "room": "208", "name": "Костикова Нина Владимировна", "position": "Ст. м/с терапевтического отделения", "phone": "23174" },
+                    { "room": "209", "name": "Долаева Фатима Аслановна", "position": "Врач терапевт", "phone": "23175" },
+                    { "room": "210", "name": "Еременко Анна Игоревна", "position": "Врач терапевт", "phone": "23172" },
+                    { "room": "211", "name": "Говорухина Татьяна Дмитриевна", "position": "Зав. терапевтического отделения", "phone": "23173" },
+                    { "room": "212", "name": "Мурадян Ерануи Наполеоновна", "position": "Врач общей практики", "phone": "23168" },
+                    { "room": "213", "name": "КДК", "position": "КДК", "phone": "23226" },
+                    { "room": "214", "name": "Галимова Лариса Захаровна", "position": "Врач общей практики", "phone": "23169" },
+                    { "room": "215", "name": "Арамисова Жанетта Мухамедовна", "position": "Врач общей практики", "phone": "23170" },
+                    { "room": "216", "name": "Трушина Светлана Викторовна", "position": "Врач общей практики", "phone": "23171" },
+                    { "room": "Холл 1 этаж", "name": "Пост охраны", "position": "Пост охраны", "phone": "23156" },
+                    { "room": "Холл 1 этаж", "name": "Стойка информации", "position": "Стойка информации", "phone": "23157" },
+                    { "room": "104", "name": "Аптечный пункт", "position": "Аптечный пункт", "phone": "23155" },
+                    { "room": "107", "name": "ОРВИ", "position": "ОРВИ", "phone": "23158" },
+                    { "room": "108", "name": "Забор крови", "position": "Забор крови", "phone": "23160" },
+                    { "room": "109", "name": "Процедурный", "position": "Процедурный", "phone": "23161" },
+                    { "room": "110", "name": "Процедурный", "position": "Процедурный", "phone": "23162" },
+                    { "room": "111", "name": "Прием биоматериалов", "position": "Прием биоматериалов", "phone": "23163" }
+                ]
+            },
+            {
+                id: "f6",
+                title: "Филиал №6 (Новаторов 5)",
+                contacts: [
+                    { "room": "Приемная", "name": "Луценко Юлия Николаевна", "position": "Делопроизводитель", "phone": "54194" },
+                    { "room": "403", "name": "Чернышова Наталья Владимировна", "position": "Заведующий филиалом № 6", "phone": "" },
+                    { "room": "406", "name": "Серебренникова Алла Николаевна", "position": "Старшая медицинская сестра филиала № 6", "phone": "54181" },
+                    { "room": "408", "name": "Войтович Алексей Михайлович", "position": "Заведующий хозяйством", "phone": "54183" },
+                    { "room": "409", "name": "Хабибова Зубаржат Тагировна", "position": "Врач ФД", "phone": "" },
+                    { "room": "410", "name": "Толкачев Илья Борисович", "position": "Врач УЗИ", "phone": "" },
+                    { "room": "412", "name": "Власова Людмила Евгеньевна", "position": "Медицинская сестра физиотерапии", "phone": "" },
+                    { "room": "413", "name": "Слободин Константин Эдуардович", "position": "Заведующий отделением УЗИ", "phone": "" },
+                    { "room": "414", "name": "Калимуллина Лариса Александровна", "position": "Врач-физиотерапевт", "phone": "" },
+                    { "room": "415", "name": "Буланова Антонина Николаевна", "position": "Инструктор ЛФК", "phone": "54189" },
+                    { "room": "419", "name": "Каленская Екатерина Ивановна", "position": "Акушер", "phone": "" },
+                    { "room": "420", "name": "Клепова Татьяна Юрьевна", "position": "Старший администратор", "phone": "54192" },
+                    { "room": "301", "name": "", "position": "", "phone": "54163" },
+                    { "room": "302", "name": "Кинзеева Ноган Эрднеевна", "position": "Врач ФД", "phone": "" },
+                    { "room": "303", "name": "Ляпунова Анастасия Константиновна", "position": "Врач-хирург", "phone": "" },
+                    { "room": "304", "name": "Сидорова Светлана Владимировна", "position": "Врач-оториноларинголог", "phone": "Нет телефона" },
+                    { "room": "305", "name": "Чертан Валентина Юрьевна", "position": "Медицинская сестра врача-оториноларинголога", "phone": "" },
+                    { "room": "306", "name": "Хайём Наджимиддинович Наджимиддинов", "position": "Врач-уролог", "phone": "" },
+                    { "room": "307", "name": "Казарян Виктория Арменовна", "position": "Медицинская сестра врача-уролога", "phone": "" },
+                    { "room": "308", "name": "Борщевская Инна Алексеевна", "position": "Медицинская сестра врача-хирурга", "phone": "" },
+                    { "room": "309", "name": "Хапсироков Владислав Артурович", "position": "Врач-хирург", "phone": "" },
+                    { "room": "312", "name": "Александрова Людмила Витальевна", "position": "Врач-невролог", "phone": "" },
+                    { "room": "313", "name": "Максимова Марина Александровна", "position": "Врач-кардиолог", "phone": "54170" },
+                    { "room": "314", "name": "Топольницкая Алевтина Игоревна", "position": "Врач-эндокринолог", "phone": "54171" },
+                    { "room": "", "name": "Верина Дарья Алексеевна", "position": "Врач-эндокринолог", "phone": "" },
+                    { "room": "318", "name": "Салтыков Сергей Владимирович", "position": "рентгенолаборант", "phone": "" },
+                    { "room": "319", "name": "Винникова Светлана Викторовна", "position": "рентгенолаборант", "phone": "" },
+                    { "room": "", "name": "Пятецкая Виктория Геннадьевна", "position": "рентгенолаборант", "phone": "" },
+                    { "room": "317", "name": "Колесникова Виктория Дмитриевна", "position": "рентгенолаборант", "phone": "" },
+                    { "room": "", "name": "Афанасьева Лена Хусеновна", "position": "рентгенолаборант", "phone": "" },
+                    { "room": "320", "name": "Прядихин Александр Александрович", "position": "Врач УЗИ", "phone": "" },
+                    { "room": "321", "name": "Шарапудинова Марьям Валитовна", "position": "Врач УЗИ", "phone": "" },
+                    { "room": "", "name": "Ярославлева Александра Владимировна", "position": "Врач УЗИ", "phone": "" },
+                    { "room": "322", "name": "Баянова Ирина Николаевна", "position": "Врач-офтальмолог", "phone": "54176" },
+                    { "room": "323", "name": "Галимова Лилия Эльбиртовна", "position": "Медицинская сестра врача-офтальмолога", "phone": "" },
+                    { "room": "325", "name": "Кондарева Ольга Александровна", "position": "Медицинская сестра ЭКГ", "phone": "" },
+                    { "room": "", "name": "Боченкова Татьяна Николаевна", "position": "Медицинская сестра ЭКГ", "phone": "" },
+                    { "room": "ХОЛЛ 2 этаж", "name": "Медицинский пост", "position": "Медицинский пост", "phone": "54159, 54160" },
+                    { "room": "203", "name": "Бабенко Людмила Николаевна", "position": "Врач общей практики (семейный)", "phone": "54140" },
+                    { "room": "204", "name": "Пищугина Ольга Геннадиевна", "position": "Врач общей практики (семейный)", "phone": "" },
+                    { "room": "205", "name": "Сыч Анна Сергеевна", "position": "Зав. терапевтическим отделение", "phone": "" },
+                    { "room": "206", "name": "Борецкая Оксана Юрьевна", "position": "Врач-методист", "phone": "" },
+                    { "room": "207", "name": "Николаева Ксения Александровна", "position": "Врач-терапевт участковый", "phone": "" },
+                    { "room": "208", "name": "Ифторова Маргарита Вячеславовна", "position": "Фельдшер", "phone": "54144" },
+                    { "room": "209", "name": "Джалимова Наталья Николаевна", "position": "Ст. м/с терапевтического отделения", "phone": "54145" },
+                    { "room": "211", "name": "Танашева Амина Зауровна", "position": "Врач-терапевт участковый", "phone": "" },
+                    { "room": "212", "name": "Чубрикова Надежда Александровна", "position": "Медицинская сестра участковая (профилактика)", "phone": "" },
+                    { "room": "213", "name": "Смирнова Татьяна Ивановна", "position": "Врач-терапевт участковый", "phone": "" },
+                    { "room": "215", "name": "Шалыго Мария Андреевна", "position": "Врач-терапевт участковый", "phone": "" },
+                    { "room": "216", "name": "Иванов Дмитрий Сергеевич", "position": "Врач-терапевт участковый", "phone": "" },
+                    { "room": "217", "name": "Бабаян Белла Тиграновна", "position": "Врач-терапевт участковый", "phone": "54151" },
+                    { "room": "218", "name": "Хакиева Хава Мухадиновна", "position": "Врач общей практики (хроники)", "phone": "54152, 54153" },
+                    { "room": "", "name": "Кагыркина Елена Владимировна", "position": "Медицинская сестра", "phone": "" },
+                    { "room": "219", "name": "Гудиев Али Гириевич", "position": "Зав. терапевтическим отделение", "phone": "54159" },
+                    { "room": "220", "name": "Луговских Анна Игоревна", "position": "Врач-терапевт участковый", "phone": "" },
+                    { "room": "221", "name": "Погорельская Екатерина Александровна", "position": "Врач-терапевт участковый", "phone": "54156" },
+                    { "room": "", "name": "Аникееваа София Алексеевна", "position": "Врач-терапевт участковый", "phone": "" },
+                    { "room": "222", "name": "Павлова Татьяна Александровна", "position": "Врач-терапевт участковый", "phone": "" },
+                    { "room": "223", "name": "Скипина Ольга Владимировна", "position": "Врач-терапевт участковый", "phone": "" },
+                    { "room": "224", "name": "Рубцова Светлана Игоревна", "position": "Врач-терапевт участковый", "phone": "" },
+                    { "room": "ХОЛЛ 1 этаж", "name": "Стойка информации", "position": "Стойка информации", "phone": "54136" },
+                    { "room": "102", "name": "Аптечный пункт", "position": "Аптечный пункт", "phone": "54126" },
+                    { "room": "104", "name": "Исаева Яхид Ахметовна", "position": "медицинская сестра участковая (ОРВИ)", "phone": "54128" },
+                    { "room": "", "name": "Данилова Марина Владимировна", "position": "медицинская сестра участковая (ОРВИ)", "phone": "" },
+                    { "room": "106", "name": "Сердюк Юлия Александровна", "position": "Врач-терапевт участковый", "phone": "54130" },
+                    { "room": "", "name": "Яцюк Екатерина Алексеевна", "position": "Врач-терапевт участковый", "phone": "" },
+                    { "room": "107", "name": "Толеева Эльвира Кульманбетовна", "position": "Врач общей практики", "phone": "54131" },
+                    { "room": "", "name": "Мысляев Никита Борисович", "position": "Врач-терапевт участковый", "phone": "" },
+                    { "room": "111", "name": "Прививочный", "position": "Прививочный", "phone": "54132" },
+                    { "room": "112", "name": "Взятие крови", "position": "Взятие крови", "phone": "" },
+                    { "room": "113", "name": "Процедурный", "position": "Процедурный", "phone": "54137" },
+                    { "room": "115", "name": "Забор биоматериалов", "position": "Забор биоматериалов", "phone": "" }
+                ]
+            }
+        ];
+        
+                // Функция для экспорта в Excel
+        function exportToExcel(data, filename = 'Телефонный_справочник_ДКЦ1') {
+            try {
+                const workbook = XLSX.utils.book_new();
+                
+                data.forEach(branch => {
+                    const excelData = [
+                        ['Филиал', branch.title],
+                        ['', ''],
+                        ['Кабинет', 'ФИО', 'Должность', 'Телефон']
+                    ];
+                    
+                    branch.contacts.forEach(contact => {
+                        excelData.push([
+                            contact.room || '',
+                            contact.name,
+                            contact.position,
+                            contact.phone || ''
+                        ]);
+                    });
+                    
+                    const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+                    
+                    const colWidths = [
+                        { wch: 15 },
+                        { wch: 30 },
+                        { wch: 40 },
+                        { wch: 15 }
+                    ];
+                    worksheet['!cols'] = colWidths;
+                    
+                    XLSX.utils.book_append_sheet(workbook, worksheet, branch.title.substring(0, 31));
+                });
+                
+                XLSX.writeFile(workbook, `${filename}_${new Date().toISOString().split('T')[0]}.xlsx`);
+                return true;
+            } catch (error) {
+                console.error('Ошибка при экспорте в Excel:', error);
+                alert('Произошла ошибка при экспорте в Excel');
+                return false;
+            }
+        }
+
+        // Функция для экспорта отфильтрованных данных
+        function exportFilteredToExcel(filteredData) {
+            if (!filteredData || filteredData.length === 0) {
+                alert('Нет данных для экспорта');
+                return false;
+            }
+            return exportToExcel(filteredData, 'Телефонный_справочник_ДКЦ1_фильтр');
+        }
+
+        // Функция для экспорта всех данных
+        function exportAllToExcel(branchesData) {
+            return exportToExcel(branchesData, 'Телефонный_справочник_ДКЦ1_все_филиалы');
+        }
+    </script>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect } = React;
+
+        function App() {
+            const [searchTerm, setSearchTerm] = useState('');
+            // State to keep track of expanded branches (accordion)
+            // Initial state: first branch open, or all closed. Let's start with GU_A open.
+            const [expandedBranches, setExpandedBranches] = useState(new Set(['gu_a']));
+
+            const toggleBranch = (branchId) => {
+                setExpandedBranches(prev => {
+                    const newSet = new Set(prev);
+                    if (newSet.has(branchId)) {
+                        newSet.delete(branchId);
+                    } else {
+                        newSet.add(branchId);
+                    }
+                    return newSet;
+                });
+            };
+
+            // Filter logic
+            const filteredData = useMemo(() => {
+                if (!searchTerm.trim()) {
+                    // Return structure as is, contacts not filtered
+                    return branchesData;
+                }
+
+                const term = searchTerm.toLowerCase();
+                
+                // Map through branches and filter their contacts
+                return branchesData.map(branch => {
+                    const filteredContacts = branch.contacts.filter(contact => {
+                        const searchString = [
+                            contact.room,
+                            contact.name,
+                            contact.position,
+                            contact.phone
+                        ].join(' ').toLowerCase();
+                        return searchString.includes(term);
+                    });
+
+                    return {
+                        ...branch,
+                        contacts: filteredContacts
+                    };
+                }).filter(branch => branch.contacts.length > 0); // Hide empty branches during search
+
+            }, [searchTerm]);
+
+            // Auto-expand logic when searching
+            useEffect(() => {
+                if (searchTerm.trim()) {
+                    // If searching, expand all branches that have results
+                    const allBranchIds = filteredData.map(b => b.id);
+                    setExpandedBranches(new Set(allBranchIds));
+                } else {
+                    // If search cleared, revert to just main building or keep as is? 
+                    // Let's reset to just GU_A for cleanliness
+                    setExpandedBranches(new Set(['gu_a']));
+                }
+            }, [searchTerm]);
+
+            // Stats calculation
+            const stats = useMemo(() => {
+                let total = 0;
+                let withPhone = 0;
+                let found = 0;
+
+                // Calculate total stats from raw data
+                branchesData.forEach(branch => {
+                    total += branch.contacts.length;
+                    withPhone += branch.contacts.filter(c => c.phone && c.phone.trim() !== '' && c.phone !== 'nan').length;
+                });
+
+                // Calculate found stats from filtered data
+                filteredData.forEach(branch => {
+                    found += branch.contacts.length;
+                });
+
+                return { total, withPhone, found };
+            }, [filteredData]);
+
+            return (
+                <>
+                    <div className="app-header">
+                        <h1>📞 Телефонный справочник</h1>
+                        <p>ГБУЗ "ДКЦ №1 ДЗМ" — Все филиалы</p>
+                    </div>
+                    
+                                        <div className="export-controls">
+                        <button className="export-btn print" onClick={() => window.print()}>
+                            <span>🖨️</span>
+                            <span>Распечатать</span>
+                        </button>
+                        <button className="export-btn excel" onClick={() => exportFilteredToExcel(filteredData)}>
+                            <span>📥</span>
+                            <span>Экспорт (поиск)</span>
+                        </button>
+                        <button className="export-btn all-excel" onClick={() => exportAllToExcel(branchesData)}>
+                            <span>📊</span>
+                            <span>Экспорт (все данные)</span>
+                        </button>
+                    </div>
+
+                    <div className="search-container">
+                        <div className="search-wrapper">
+                            <div className="search-icon">🔍</div>
+                            <input
+                                type="text"
+                                className="search-box"
+                                placeholder="Поиск по всем филиалам (ФИО, должность, кабинет)..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="stats-bar">
+                        <div className="stat-card">
+                            <h3>{stats.total}</h3>
+                            <p>Всего контактов</p>
+                        </div>
+                        <div className="stat-card">
+                            <h3>{stats.withPhone}</h3>
+                            <p>С телефонами</p>
+                        </div>
+                        <div className="stat-card">
+                            <h3>{stats.found}</h3>
+                            <p>Найдено</p>
+                        </div>
+                    </div>
+
+                    <div className="branches-container">
+                        {filteredData.length > 0 ? (
+                            filteredData.map(branch => {
+                                const isExpanded = expandedBranches.has(branch.id);
+                                return (
+                                    <div key={branch.id} className="branch-section">
+                                        <div 
+                                            className={`branch-header ${isExpanded ? 'active' : ''}`}
+                                            onClick={() => toggleBranch(branch.id)}
+                                        >
+                                            <span>{branch.title}</span>
+                                            <span className="icon">▼</span>
+                                        </div>
+                                        
+                                        {isExpanded && (
+                                            <div className="table-container">
+                                                <div className="table-wrapper">
+                                                    <table>
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Кабинет</th>
+                                                                <th>ФИО</th>
+                                                                <th className="position-cell">Должность</th>
+                                                                <th>Телефон</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {branch.contacts.map((contact, index) => (
+                                                                <tr key={index}>
+                                                                    <td className="room-cell">{contact.room || '—'}</td>
+                                                                    <td className="name-cell">{contact.name}</td>
+                                                                    <td className="position-cell">{contact.position}</td>
+                                                                    <td className="phone-cell">
+                                                                        {contact.phone && contact.phone.trim() !== '' && contact.phone !== 'nan' 
+                                                                            ? contact.phone 
+                                                                            : '—'}
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div className="no-results">
+                                <div className="no-results-icon">🔍</div>
+                                <p>По вашему запросу ничего не найдено</p>
+                                <p style={{fontSize: '1rem', marginTop: '15px', opacity: 0.8}}>
+                                    Попробуйте изменить поисковый запрос
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
+
+
