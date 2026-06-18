@@ -6,7 +6,6 @@
     <title>Телефонный справочник ДКЦ №1 (Все филиалы)</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap">
     <style>
@@ -1104,204 +1103,204 @@
         function exportAllToExcel(branchesData) {
             return exportToExcel(branchesData, 'Телефонный_справочник_ДКЦ1_все_филиалы');
         }
+    
+
+const { useState, useMemo, useEffect } = React;
+
+function App() {
+  const [searchTerm, setSearchTerm] = useState('');
+  // State to keep track of expanded branches (accordion)
+  // Initial state: first branch open, or all closed. Let's start with GU_A open.
+  const [expandedBranches, setExpandedBranches] = useState(new Set(['gu_a']));
+
+  const toggleBranch = (branchId) => {
+    setExpandedBranches((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(branchId)) {
+        newSet.delete(branchId);
+      } else {
+        newSet.add(branchId);
+      }
+      return newSet;
+    });
+  };
+
+  // Filter logic
+  const filteredData = useMemo(() => {
+    if (!searchTerm.trim()) {
+      // Return structure as is, contacts not filtered
+      return branchesData;
+    }
+
+    const term = searchTerm.toLowerCase();
+
+    // Map through branches and filter their contacts
+    return branchesData.map((branch) => {
+      const filteredContacts = branch.contacts.filter((contact) => {
+        const searchString = [
+        contact.room,
+        contact.name,
+        contact.position,
+        contact.phone].
+        join(' ').toLowerCase();
+        return searchString.includes(term);
+      });
+
+      return {
+        ...branch,
+        contacts: filteredContacts
+      };
+    }).filter((branch) => branch.contacts.length > 0); // Hide empty branches during search
+
+  }, [searchTerm]);
+
+  // Auto-expand logic when searching
+  useEffect(() => {
+    if (searchTerm.trim()) {
+      // If searching, expand all branches that have results
+      const allBranchIds = filteredData.map((b) => b.id);
+      setExpandedBranches(new Set(allBranchIds));
+    } else {
+      // If search cleared, revert to just main building or keep as is? 
+      // Let's reset to just GU_A for cleanliness
+      setExpandedBranches(new Set(['gu_a']));
+    }
+  }, [searchTerm]);
+
+  // Stats calculation
+  const stats = useMemo(() => {
+    let total = 0;
+    let withPhone = 0;
+    let found = 0;
+
+    // Calculate total stats from raw data
+    branchesData.forEach((branch) => {
+      total += branch.contacts.length;
+      withPhone += branch.contacts.filter((c) => c.phone && c.phone.trim() !== '' && c.phone !== 'nan').length;
+    });
+
+    // Calculate found stats from filtered data
+    filteredData.forEach((branch) => {
+      found += branch.contacts.length;
+    });
+
+    return { total, withPhone, found };
+  }, [filteredData]);
+
+  return (/*#__PURE__*/
+    React.createElement(React.Fragment, null, /*#__PURE__*/
+    React.createElement("div", { className: "app-header" }, /*#__PURE__*/
+    React.createElement("h1", null, "📞 Телефонный справочник"), /*#__PURE__*/
+    React.createElement("p", null, "ГБУЗ \"ДКЦ №1 ДЗМ\" — Все филиалы")
+    ), /*#__PURE__*/
+
+    React.createElement("div", { className: "export-controls" }, /*#__PURE__*/
+    React.createElement("button", { className: "export-btn print", onClick: () => window.print() }, /*#__PURE__*/
+    React.createElement("span", null, "🖨️"), /*#__PURE__*/
+    React.createElement("span", null, "Распечатать")
+    ), /*#__PURE__*/
+    React.createElement("button", { className: "export-btn excel", onClick: () => exportFilteredToExcel(filteredData) }, /*#__PURE__*/
+    React.createElement("span", null, "📥"), /*#__PURE__*/
+    React.createElement("span", null, "Экспорт (поиск)")
+    ), /*#__PURE__*/
+    React.createElement("button", { className: "export-btn all-excel", onClick: () => exportAllToExcel(branchesData) }, /*#__PURE__*/
+    React.createElement("span", null, "📊"), /*#__PURE__*/
+    React.createElement("span", null, "Экспорт (все данные)")
+    )
+    ), /*#__PURE__*/
+
+    React.createElement("div", { className: "search-container" }, /*#__PURE__*/
+    React.createElement("div", { className: "search-wrapper" }, /*#__PURE__*/
+    React.createElement("div", { className: "search-icon" }, "🔍"), /*#__PURE__*/
+    React.createElement("input", {
+      type: "text",
+      className: "search-box",
+      placeholder: "Поиск по всем филиалам (ФИО, должность, кабинет)...",
+      value: searchTerm,
+      onChange: (e) => setSearchTerm(e.target.value) }
+    )
+    )
+    ), /*#__PURE__*/
+
+    React.createElement("div", { className: "stats-bar" }, /*#__PURE__*/
+    React.createElement("div", { className: "stat-card" }, /*#__PURE__*/
+    React.createElement("h3", null, stats.total), /*#__PURE__*/
+    React.createElement("p", null, "Всего контактов")
+    ), /*#__PURE__*/
+    React.createElement("div", { className: "stat-card" }, /*#__PURE__*/
+    React.createElement("h3", null, stats.withPhone), /*#__PURE__*/
+    React.createElement("p", null, "С телефонами")
+    ), /*#__PURE__*/
+    React.createElement("div", { className: "stat-card" }, /*#__PURE__*/
+    React.createElement("h3", null, stats.found), /*#__PURE__*/
+    React.createElement("p", null, "Найдено")
+    )
+    ), /*#__PURE__*/
+
+    React.createElement("div", { className: "branches-container" },
+    filteredData.length > 0 ?
+    filteredData.map((branch) => {
+      const isExpanded = expandedBranches.has(branch.id);
+      return (/*#__PURE__*/
+        React.createElement("div", { key: branch.id, className: "branch-section" }, /*#__PURE__*/
+        React.createElement("div", {
+          className: `branch-header ${isExpanded ? 'active' : ''}`,
+          onClick: () => toggleBranch(branch.id) }, /*#__PURE__*/
+
+        React.createElement("span", null, branch.title), /*#__PURE__*/
+        React.createElement("span", { className: "icon" }, "▼")
+        ),
+
+        isExpanded && /*#__PURE__*/
+        React.createElement("div", { className: "table-container" }, /*#__PURE__*/
+        React.createElement("div", { className: "table-wrapper" }, /*#__PURE__*/
+        React.createElement("table", null, /*#__PURE__*/
+        React.createElement("thead", null, /*#__PURE__*/
+        React.createElement("tr", null, /*#__PURE__*/
+        React.createElement("th", null, "Кабинет"), /*#__PURE__*/
+        React.createElement("th", null, "ФИО"), /*#__PURE__*/
+        React.createElement("th", { className: "position-cell" }, "Должность"), /*#__PURE__*/
+        React.createElement("th", null, "Телефон")
+        )
+        ), /*#__PURE__*/
+        React.createElement("tbody", null,
+        branch.contacts.map((contact, index) => /*#__PURE__*/
+        React.createElement("tr", { key: index }, /*#__PURE__*/
+        React.createElement("td", { className: "room-cell" }, contact.room || '—'), /*#__PURE__*/
+        React.createElement("td", { className: "name-cell" }, contact.name), /*#__PURE__*/
+        React.createElement("td", { className: "position-cell" }, contact.position), /*#__PURE__*/
+        React.createElement("td", { className: "phone-cell" },
+        contact.phone && contact.phone.trim() !== '' && contact.phone !== 'nan' ?
+        contact.phone :
+        '—'
+        )
+        )
+        )
+        )
+        )
+        )
+        )
+
+        ));
+
+    }) : /*#__PURE__*/
+
+    React.createElement("div", { className: "no-results" }, /*#__PURE__*/
+    React.createElement("div", { className: "no-results-icon" }, "🔍"), /*#__PURE__*/
+    React.createElement("p", null, "По вашему запросу ничего не найдено"), /*#__PURE__*/
+    React.createElement("p", { style: { fontSize: '1rem', marginTop: '15px', opacity: 0.8 } }, "Попробуйте изменить поисковый запрос"
+
+    )
+    )
+
+    )
+    ));
+
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(/*#__PURE__*/React.createElement(App, null));
     </script>
 
-    <script type="text/babel">
-        const { useState, useMemo, useEffect } = React;
-
-        function App() {
-            const [searchTerm, setSearchTerm] = useState('');
-            // State to keep track of expanded branches (accordion)
-            // Initial state: first branch open, or all closed. Let's start with GU_A open.
-            const [expandedBranches, setExpandedBranches] = useState(new Set(['gu_a']));
-
-            const toggleBranch = (branchId) => {
-                setExpandedBranches(prev => {
-                    const newSet = new Set(prev);
-                    if (newSet.has(branchId)) {
-                        newSet.delete(branchId);
-                    } else {
-                        newSet.add(branchId);
-                    }
-                    return newSet;
-                });
-            };
-
-            // Filter logic
-            const filteredData = useMemo(() => {
-                if (!searchTerm.trim()) {
-                    // Return structure as is, contacts not filtered
-                    return branchesData;
-                }
-
-                const term = searchTerm.toLowerCase();
-                
-                // Map through branches and filter their contacts
-                return branchesData.map(branch => {
-                    const filteredContacts = branch.contacts.filter(contact => {
-                        const searchString = [
-                            contact.room,
-                            contact.name,
-                            contact.position,
-                            contact.phone
-                        ].join(' ').toLowerCase();
-                        return searchString.includes(term);
-                    });
-
-                    return {
-                        ...branch,
-                        contacts: filteredContacts
-                    };
-                }).filter(branch => branch.contacts.length > 0); // Hide empty branches during search
-
-            }, [searchTerm]);
-
-            // Auto-expand logic when searching
-            useEffect(() => {
-                if (searchTerm.trim()) {
-                    // If searching, expand all branches that have results
-                    const allBranchIds = filteredData.map(b => b.id);
-                    setExpandedBranches(new Set(allBranchIds));
-                } else {
-                    // If search cleared, revert to just main building or keep as is? 
-                    // Let's reset to just GU_A for cleanliness
-                    setExpandedBranches(new Set(['gu_a']));
-                }
-            }, [searchTerm]);
-
-            // Stats calculation
-            const stats = useMemo(() => {
-                let total = 0;
-                let withPhone = 0;
-                let found = 0;
-
-                // Calculate total stats from raw data
-                branchesData.forEach(branch => {
-                    total += branch.contacts.length;
-                    withPhone += branch.contacts.filter(c => c.phone && c.phone.trim() !== '' && c.phone !== 'nan').length;
-                });
-
-                // Calculate found stats from filtered data
-                filteredData.forEach(branch => {
-                    found += branch.contacts.length;
-                });
-
-                return { total, withPhone, found };
-            }, [filteredData]);
-
-            return (
-                <>
-                    <div className="app-header">
-                        <h1>📞 Телефонный справочник</h1>
-                        <p>ГБУЗ "ДКЦ №1 ДЗМ" — Все филиалы</p>
-                    </div>
-                    
-                                        <div className="export-controls">
-                        <button className="export-btn print" onClick={() => window.print()}>
-                            <span>🖨️</span>
-                            <span>Распечатать</span>
-                        </button>
-                        <button className="export-btn excel" onClick={() => exportFilteredToExcel(filteredData)}>
-                            <span>📥</span>
-                            <span>Экспорт (поиск)</span>
-                        </button>
-                        <button className="export-btn all-excel" onClick={() => exportAllToExcel(branchesData)}>
-                            <span>📊</span>
-                            <span>Экспорт (все данные)</span>
-                        </button>
-                    </div>
-
-                    <div className="search-container">
-                        <div className="search-wrapper">
-                            <div className="search-icon">🔍</div>
-                            <input
-                                type="text"
-                                className="search-box"
-                                placeholder="Поиск по всем филиалам (ФИО, должность, кабинет)..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="stats-bar">
-                        <div className="stat-card">
-                            <h3>{stats.total}</h3>
-                            <p>Всего контактов</p>
-                        </div>
-                        <div className="stat-card">
-                            <h3>{stats.withPhone}</h3>
-                            <p>С телефонами</p>
-                        </div>
-                        <div className="stat-card">
-                            <h3>{stats.found}</h3>
-                            <p>Найдено</p>
-                        </div>
-                    </div>
-
-                    <div className="branches-container">
-                        {filteredData.length > 0 ? (
-                            filteredData.map(branch => {
-                                const isExpanded = expandedBranches.has(branch.id);
-                                return (
-                                    <div key={branch.id} className="branch-section">
-                                        <div 
-                                            className={`branch-header ${isExpanded ? 'active' : ''}`}
-                                            onClick={() => toggleBranch(branch.id)}
-                                        >
-                                            <span>{branch.title}</span>
-                                            <span className="icon">▼</span>
-                                        </div>
-                                        
-                                        {isExpanded && (
-                                            <div className="table-container">
-                                                <div className="table-wrapper">
-                                                    <table>
-                                                        <thead>
-                                                            <tr>
-                                                                <th>Кабинет</th>
-                                                                <th>ФИО</th>
-                                                                <th className="position-cell">Должность</th>
-                                                                <th>Телефон</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {branch.contacts.map((contact, index) => (
-                                                                <tr key={index}>
-                                                                    <td className="room-cell">{contact.room || '—'}</td>
-                                                                    <td className="name-cell">{contact.name}</td>
-                                                                    <td className="position-cell">{contact.position}</td>
-                                                                    <td className="phone-cell">
-                                                                        {contact.phone && contact.phone.trim() !== '' && contact.phone !== 'nan' 
-                                                                            ? contact.phone 
-                                                                            : '—'}
-                                                                    </td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })
-                        ) : (
-                            <div className="no-results">
-                                <div className="no-results-icon">🔍</div>
-                                <p>По вашему запросу ничего не найдено</p>
-                                <p style={{fontSize: '1rem', marginTop: '15px', opacity: 0.8}}>
-                                    Попробуйте изменить поисковый запрос
-                                </p>
-                            </div>
-                        )}
-                    </div>
-                </>
-            );
-        }
-
-        ReactDOM.render(<App />, document.getElementById('root'));
-    </script>
 </body>
 </html>
 
